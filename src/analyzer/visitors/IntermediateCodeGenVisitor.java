@@ -190,7 +190,9 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        node.childrenAccept(this, data);
+        String identifier = ((ASTIdentifier) node.jjtGetChild(0)).getValue() + " = ";
+        String address = (String) node.jjtGetChild(1).jjtAccept(this, data);
+        m_writer.print(identifier + address);
         return null;
     }
 
@@ -198,8 +200,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     //Il n'y a probablement rien à faire ici
     @Override
     public Object visit(ASTExpr node, Object data){
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //Expression arithmétique
@@ -217,22 +218,19 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //UnaExpr est presque pareil au deux précédente. la plus grosse différence est qu'il ne va pas
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     //expression logique
@@ -245,8 +243,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
@@ -283,8 +280,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTCompExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
 
@@ -295,14 +291,12 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTNotExpr node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     @Override
     public Object visit(ASTGenValue node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     /*
@@ -311,8 +305,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.getValue().toString();
     }
 
 
@@ -323,14 +316,12 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTIdentifier node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return node.getValue();
     }
 
     @Override
     public Object visit(ASTIntValue node, Object data) {
-        node.childrenAccept(this, data);
-        return null;
+        return ((Integer)node.getValue()).toString();
     }
 
 
