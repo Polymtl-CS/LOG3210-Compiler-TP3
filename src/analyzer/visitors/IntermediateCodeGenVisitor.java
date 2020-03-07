@@ -190,9 +190,8 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTAssignStmt node, Object data) {
-        String identifier = ((ASTIdentifier) node.jjtGetChild(0)).getValue() + " = ";
-        String address = (String) node.jjtGetChild(1).jjtAccept(this, data);
-        m_writer.print(identifier + address);
+        String identifier = ((ASTIdentifier) node.jjtGetChild(0)).getValue();
+        m_writer.println(identifier + " = " + node.jjtGetChild(1).jjtAccept(this, data));
         return null;
     }
 
@@ -212,25 +211,39 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     la taille de ops sera toujours 1 de moins que la taille de jjtGetNumChildren
      */
     public String exprCodeGen(SimpleNode node, Object data, Vector<String> ops) {
-        node.childrenAccept(this, data);
-        return null;
+        String e1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
+        String e_address;
+        for (int i = 0; i < ops.size(); i++) {
+            String e2_address = (String) node.jjtGetChild(i+1).jjtAccept(this, data);
+            e_address = genId();
+            m_writer.println(e_address + " = " + e1_address + " " + ops.get(i) + " " + e2_address);
+            e1_address = e_address;
+        }
+        return e1_address;
     }
 
     @Override
     public Object visit(ASTAddExpr node, Object data) {
-        return node.jjtGetChild(0).jjtAccept(this, data);
+        return this.exprCodeGen(node, data, node.getOps());
     }
 
     @Override
     public Object visit(ASTMulExpr node, Object data) {
-        return node.jjtGetChild(0).jjtAccept(this, data);
+        return this.exprCodeGen(node, data, node.getOps());
     }
 
     //UnaExpr est presque pareil au deux précédente. la plus grosse différence est qu'il ne va pas
     //chercher un deuxième noeud enfant pour avoir une valeur puisqu'il s'agit d'une opération unaire.
     @Override
     public Object visit(ASTUnaExpr node, Object data) {
-        return node.jjtGetChild(0).jjtAccept(this, data);
+        String e1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
+        String e_address;
+        for (int i = 0; i < node.getOps().size(); i++) {
+            e_address = genId();
+            m_writer.println(e_address + " = " + node.getOps().get(i) + " " + e1_address);
+            e1_address = e_address;
+        }
+        return e1_address;
     }
 
     //expression logique
