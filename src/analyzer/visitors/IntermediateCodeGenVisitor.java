@@ -7,6 +7,7 @@ import sun.awt.Symbol;
 
 import java.awt.*;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -452,23 +453,37 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
 
     @Override
     public Object visit(ASTSwitchStmt node, Object data) {
-
-        node.childrenAccept(this, null);
+        String temp = (String) node.jjtGetChild(0).jjtAccept(this, data);
+        String test = genLabel();
+        String next = genLabel();
+        ArrayList<String> labels = new ArrayList<String>();
+        ArrayList<String> address = new ArrayList<String>();
+        m_writer.println("goto " + test);
+        for (int i = 1; i < node.jjtGetNumChildren(); i++) {
+            String label = genLabel();
+            labels.add(label);
+            m_writer.println(label);
+            address.add((String) node.jjtGetChild(i).jjtAccept(this, data));
+            m_writer.println("goto " + next);
+        }
+        m_writer.println(test);
+        for (int counter = 0; counter < labels.size(); counter++) {
+            if (address.get(counter) == null) m_writer.println("goto " + labels.get(counter));
+            else genCodeRelTestJump(labels.get(counter), null, temp + " == " + address.get(counter));
+        }
+        m_writer.println(next);
         return null;
     }
 
     @Override
     public Object visit(ASTCaseStmt node, Object data) {
-
-        node.childrenAccept(this, null);
-        return null;
+        node.jjtGetChild(1).jjtAccept(this, data);
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     @Override
     public Object visit(ASTDefaultStmt node, Object data) {
-
-        node.childrenAccept(this, null);
-
+        node.childrenAccept(this, data);
         return null;
     }
 
