@@ -1,0 +1,4 @@
+a = 10
+goto null
+_t0 = a - 1
+a = _t0

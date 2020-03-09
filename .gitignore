@@ -6,4 +6,4 @@ out/
 gen-src/
 
 #Run files
-test-suite/**/result
+#test-suite/**/result
