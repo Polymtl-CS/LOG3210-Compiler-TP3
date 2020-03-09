@@ -194,17 +194,22 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
         if(SymbolTable.get(identifier).equals(VarType.Number)) {
             m_writer.println(identifier + " = " + node.jjtGetChild(1).jjtAccept(this, data));
         } else {
-            BoolLabel B_label = new BoolLabel(genLabel(), genLabel());
-            String S_next = genLabel();
-            node.jjtGetChild(1).jjtAccept(this, new BoolLabel(B_label));
-            m_writer.println(B_label.lTrue);
-            m_writer.println(identifier + " = 1");
-            m_writer.println("goto " + S_next);
-            m_writer.println(B_label.lFalse);
-            m_writer.println(identifier + " = 0");
-            m_writer.println(S_next);
+            assignBooleanCodeGen(node.jjtGetChild(1), identifier);
         }
         return null;
+    }
+
+    private String assignBooleanCodeGen(Node B, String identifier) {
+        BoolLabel B_label = new BoolLabel(genLabel(), genLabel());
+        String S_next = genLabel();
+        B.jjtAccept(this, new BoolLabel(B_label));
+        m_writer.println(B_label.lTrue);
+        m_writer.println(identifier + " = 1");
+        m_writer.println("goto " + S_next);
+        m_writer.println(B_label.lFalse);
+        m_writer.println(identifier + " = 0");
+        m_writer.println(S_next);
+        return identifier;
     }
 
 
@@ -324,12 +329,16 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTCompExpr node, Object data) {
         if (node.getValue() == null) return node.jjtGetChild(0).jjtAccept(this, data);
         BoolLabel B_label = (BoolLabel) data;
+        B_label.silent = true;
         String E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
         if (E1_address != null) {
+            E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
             String E2_address = (String) node.jjtGetChild(1).jjtAccept(this, data);
             genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
         } else {
-            //TODO: comparison boolean here
+            E1_address = assignBooleanCodeGen(node.jjtGetChild(0), genId());
+            String E2_address = assignBooleanCodeGen(node.jjtGetChild(1), genId());
+            genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
         }
         return null;
     }
@@ -378,7 +387,8 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     public Object visit(ASTIdentifier node, Object data) {
         if(SymbolTable.get(node.getValue()).equals(VarType.Number)) return node.getValue();
         BoolLabel B_label = (BoolLabel) data;
-        genCodeRelTestJump(B_label.lTrue, B_label.lFalse, node.getValue() + " == 1");
+        if (!B_label.silent) genCodeRelTestJump(B_label.lTrue, B_label.lFalse, node.getValue() + " == 1");
+        else B_label.silent = false;
         return null;
     }
 
@@ -420,6 +430,7 @@ public class IntermediateCodeGenVisitor implements ParserVisitor {
     private class BoolLabel {
         public String lTrue = null;
         public String lFalse = null;
+        public boolean silent = false;
 
         public BoolLabel(String ltrue, String lfalse) {
             lTrue = ltrue;
