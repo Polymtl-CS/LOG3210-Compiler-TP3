@@ -95,22 +95,20 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTIfStmt node, Object data) {
         if (node.jjtGetNumChildren() < 3) {
-            String B_true = genLabel();
+            String B_true = "fall";
             String S_next = genLabel();
             BoolLabel B_label = new BoolLabel(B_true, S_next);
             String S1_next = S_next;
             node.jjtGetChild(0).jjtAccept(this, B_label);
-            m_writer.println(B_label.lTrue);
             B_label.next = S1_next;
             node.jjtGetChild(1).jjtAccept(this, B_label);
             m_writer.println(S_next);
         } else {
-            BoolLabel B_label = new BoolLabel(genLabel(), genLabel());
+            BoolLabel B_label = new BoolLabel("fall", genLabel());
             String S_next = genLabel();
             String S1_next = S_next;
             String S2_next = S_next;
             node.jjtGetChild(0).jjtAccept(this, B_label);
-            m_writer.println(B_label.lTrue);
             B_label.next = S1_next;
             node.jjtGetChild(1).jjtAccept(this, B_label);
             m_writer.println("goto " + S_next);
@@ -125,14 +123,13 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     @Override
     public Object visit(ASTWhileStmt node, Object data) {
         String begin = genLabel();
-        String B_true = genLabel();
+        String B_true = "fall";
         String S_next = genLabel();
         BoolLabel B_label = new BoolLabel(B_true, S_next);
         String S1_next = begin;
         B_label.next = S1_next;
         m_writer.println(begin);
         node.jjtGetChild(0).jjtAccept(this, B_label);
-        m_writer.println(B_label.lTrue);
         node.jjtGetChild(1).jjtAccept(this, B_label);
         m_writer.println("goto " + begin);
         m_writer.println(S_next);
@@ -236,14 +233,13 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     }
 
     private String assignBooleanCodeGen(Node B, String identifier, Object data) {
-        BoolLabel B_label = new BoolLabel(genLabel(), genLabel());
+        BoolLabel B_label = new BoolLabel("fall", genLabel());
         String S_herite_next = null;
         if (data != null) S_herite_next= ((BoolLabel) data).next;
         String S_next;
         if (S_herite_next == null)  S_next = genLabel();
         else S_next = S_herite_next;
         B.jjtAccept(this, new BoolLabel(B_label));
-        m_writer.println(B_label.lTrue);
         m_writer.println(identifier + " = 1");
         m_writer.println("goto " + S_next);
         m_writer.println(B_label.lFalse);
@@ -317,17 +313,31 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
         if (node.getOps().size() == 0) return node.jjtGetChild(0).jjtAccept(this, new BoolLabel(B_label));
         for (int i = node.getOps().size(); i > 0; i--) {
             if (node.getOps().get(i-1).equals("||")) {
-                BoolLabel B1_label = new BoolLabel(B_label.lTrue, genLabel());
+                BoolLabel B1_label;
+                if (B_label.lTrue.equals("fall")) B1_label = new BoolLabel(genLabel(), "fall");
+                else B1_label = new BoolLabel(B_label.lTrue, "fall");
                 BoolLabel B2_label = new BoolLabel(B_label);
-                node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
-                m_writer.println(B1_label.lFalse);
-                node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                if (B_label.lTrue.equals("fall")) {
+                    node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
+                    node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                    m_writer.println(B1_label.lTrue);
+                } else {
+                    node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
+                    node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                }
             } else {
-                BoolLabel B1_label = new BoolLabel(genLabel(), B_label.lFalse);
+                BoolLabel B1_label;
+                if (B_label.lFalse.equals("fall")) B1_label = new BoolLabel("fall", genLabel());
+                else B1_label = new BoolLabel("fall", B_label.lFalse);
                 BoolLabel B2_label = new BoolLabel(B_label);
-                node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
-                m_writer.println(B1_label.lTrue);
-                node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                if (B_label.lFalse.equals("fall")) {
+                    node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
+                    node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                    m_writer.println(B1_label.lFalse);
+                } else {
+                    node.jjtGetChild(i-1).jjtAccept(this, new BoolLabel(B1_label));
+                    node.jjtGetChild(i).jjtAccept(this, new BoolLabel(B2_label));
+                }
             }
         }
         return null;
@@ -342,9 +352,9 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
             m_writer.println("if " + strSegment + " goto " + labelTrue);
             m_writer.println("goto " + labelfalse);
         } else if (labelTrue != null) {
-            m_writer.println("if " + strSegment + " goto " + labelTrue);
+            m_writer.println("if" + strSegment + " goto " + labelTrue);
         } else if (labelfalse != null) {
-            m_writer.println("if " + strSegment + " goto " + labelfalse);
+            m_writer.println("if" + strSegment + " goto " + labelfalse);
         }
     }
 
@@ -386,13 +396,45 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
         }
 
         if (number_comparison) {
-            String E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
-            String E2_address = (String) node.jjtGetChild(1).jjtAccept(this, data);
-            genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
+            if(!B_label.lTrue.equals("fall") && !B_label.lFalse.equals("fall")) {
+                String E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
+                String E2_address = (String) node.jjtGetChild(1).jjtAccept(this, data);
+                genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
+            } else {
+                if(!B_label.lTrue.equals("fall")) {
+                    String E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
+                    String E2_address = (String) node.jjtGetChild(1).jjtAccept(this, data);
+                    genCodeRelTestJump(B_label.lTrue, null, " " + E1_address + " " + node.getValue() + " " + E2_address);
+                } else {
+                    if(!B_label.lFalse.equals("fall")) {
+                        String E1_address = (String) node.jjtGetChild(0).jjtAccept(this, data);
+                        String E2_address = (String) node.jjtGetChild(1).jjtAccept(this, data);
+                        genCodeRelTestJump(null, B_label.lFalse, "False " + E1_address + " " + node.getValue() + " " + E2_address);
+                    } else {
+                        m_writer.println("error");
+                    }
+                }
+            }
         } else {
-            String E1_address = assignBooleanCodeGen(node.jjtGetChild(0), genId(), data);
-            String E2_address = assignBooleanCodeGen(node.jjtGetChild(1), genId(), data);
-            genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
+            if(!B_label.lTrue.equals("fall") && !B_label.lFalse.equals("fall")) {
+                String E1_address = assignBooleanCodeGen(node.jjtGetChild(0), genId(), data);
+                String E2_address = assignBooleanCodeGen(node.jjtGetChild(1), genId(), data);
+                genCodeRelTestJump(B_label.lTrue, B_label.lFalse, E1_address + " " + node.getValue() + " " + E2_address);
+            } else {
+                if(!B_label.lTrue.equals("fall")) {
+                    String E1_address = assignBooleanCodeGen(node.jjtGetChild(0), genId(), data);
+                    String E2_address = assignBooleanCodeGen(node.jjtGetChild(1), genId(), data);
+                    genCodeRelTestJump(B_label.lTrue, null, " " + E1_address + " " + node.getValue() + " " + E2_address);
+                } else {
+                    if(!B_label.lFalse.equals("fall")) {
+                        String E1_address = assignBooleanCodeGen(node.jjtGetChild(0), genId(), data);
+                        String E2_address = assignBooleanCodeGen(node.jjtGetChild(1), genId(), data);
+                        genCodeRelTestJump(null, B_label.lFalse, "False " + E1_address + " " + node.getValue() + " " + E2_address);
+                    } else {
+                        m_writer.println("error");
+                    }
+                }
+            }
         }
         return null;
     }
@@ -426,8 +468,12 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
      */
     @Override
     public Object visit(ASTBoolValue node, Object data) {
-        if (node.getValue()) m_writer.println("goto " + ((BoolLabel) data).lTrue);
-        else m_writer.println("goto " + ((BoolLabel) data).lFalse);
+        if (node.getValue()) {
+            if (!((BoolLabel) data).lTrue.equals("fall")) m_writer.println("goto " + ((BoolLabel) data).lTrue);
+        }
+        else {
+            if (!((BoolLabel) data).lFalse.equals("fall")) m_writer.println("goto " + ((BoolLabel) data).lFalse);
+        }
         return null;
     }
 
@@ -441,7 +487,18 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
     public Object visit(ASTIdentifier node, Object data) {
         if(SymbolTable.get(node.getValue()).equals(VarType.Number)) return node.getValue();
         BoolLabel B_label = (BoolLabel) data;
-        genCodeRelTestJump(B_label.lTrue, B_label.lFalse, node.getValue() + " == 1");
+
+        if (!B_label.lTrue.equals("fall") && !B_label.lFalse.equals("fall")) {
+            genCodeRelTestJump(B_label.lTrue, B_label.lFalse, node.getValue() + " == 1");
+        } else {
+            if (!B_label.lTrue.equals("fall")) genCodeRelTestJump(B_label.lTrue, null, " " + node.getValue() + " == 1");
+            else if (!B_label.lFalse.equals("fall")) {
+                genCodeRelTestJump(null, B_label.lFalse, "False " + node.getValue() + " == 1");
+            } else {
+                m_writer.println("error");
+            }
+        }
+//        genCodeRelTestJump(B_label.lTrue, B_label.lFalse, node.getValue() + " == 1");
         return null;
     }
 
@@ -469,7 +526,7 @@ public class IntermediateCodeGenFallVisitor implements ParserVisitor {
         m_writer.println(test);
         for (int counter = 0; counter < labels.size(); counter++) {
             if (address.get(counter) == null) m_writer.println("goto " + labels.get(counter));
-            else genCodeRelTestJump(labels.get(counter), null, temp + " == " + address.get(counter));
+            else genCodeRelTestJump(labels.get(counter), null, " " + temp + " == " + address.get(counter));
         }
         m_writer.println(next);
         return null;
